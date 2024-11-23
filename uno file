@@ -1,0 +1,78 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <Servo.h>
+#include <SoftwareSerial.h>
+
+// Pin Setup
+int lampPin = 3;               // Pin untuk Relay Lampu
+int sensorPin = A0;            // Pin untuk Sensor Suhu
+int servoPin = 9;              // Pin untuk Servo
+int buzzerPin = 8;             // Pin untuk Speaker/Buzzer
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // LCD I2C 16x2
+Servo myServo;                  // Objek servo
+SoftwareSerial btSerial(10, 11);  // Bluetooth RX, TX
+
+void setup() {
+  // Inisialisasi
+  pinMode(lampPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  btSerial.begin(9600);              // Mulai komunikasi serial dengan Bluetooth
+  lcd.begin(16, 2);                  // Mulai LCD
+  lcd.print("Asisten Rumah");        // Tampilkan teks
+  myServo.attach(servoPin);          // Menghubungkan servo ke pin
+  Serial.begin(9600);                // Inisialisasi serial monitor untuk debugging
+}
+
+void loop() {
+  if (btSerial.available()) {
+    char command = btSerial.read();  // Membaca perintah dari Bluetooth
+    if (command == 'L') {
+      // Menyalakan atau mematikan lampu
+      digitalWrite(lampPin, HIGH);
+      lcd.clear();
+      lcd.print("Lampu ON");
+      tone(buzzerPin, 1000, 500);    // Buzzer bunyi
+    } 
+    else if (command == 'O') {
+      // Mematikan lampu
+      digitalWrite(lampPin, LOW);
+      lcd.clear();
+      lcd.print("Lampu OFF");
+    }
+    else if (command == 'S') {
+      // Menyapa pengguna
+      lcd.clear();
+      lcd.print("Halo, Selamat datang!");
+      tone(buzzerPin, 500, 1000);    // Buzzer bunyi untuk menyapa
+    }
+    else if (command == 'M') {
+      // Memutar lagu (sebagai contoh, buzzer menghasilkan suara)
+      tone(buzzerPin, 1500, 500);    // Buzzer berbunyi seperti musik
+      delay(500);
+      tone(buzzerPin, 1000, 500);    // Buzzer berbunyi lagi
+    }
+  }
+
+  // Membaca suhu dari sensor LM35 (atau DHT11)
+  int sensorValue = analogRead(sensorPin); 
+  float voltage = sensorValue * (5.0 / 1023.0); // Konversi ke volt
+  float temperature = voltage * 100;  // Menghitung suhu (dalam celcius)
+
+  // Menampilkan suhu pada LCD
+  lcd.setCursor(0, 1);
+  lcd.print("Suhu: ");
+  lcd.print(temperature);
+  lcd.print(" C");
+
+  // Menyesuaikan posisi servo berdasarkan suhu
+  if (temperature < 25) {
+    myServo.write(0);    // Servo di posisi 0 derajat jika suhu di bawah 25°C
+  } else if (temperature >= 25 && temperature < 30) {
+    myServo.write(90);   // Servo di posisi 90 derajat
+  } else {
+    myServo.write(180);  // Servo di posisi 180 derajat jika suhu lebih dari 30°C
+  }
+
+  delay(1000);  // Delay untuk pembacaan sensor
+}
